@@ -301,6 +301,9 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
         
         st.write("") 
         
+        #Message d'interprétation pour éviter la confusion sur les pourcentages
+        st.info("Note d'interprétation : Les pourcentages affichés ci-dessous n'ont aucun lien additif direct avec le pourcentage global de risque (ils ne s'additionnent pas pour former le score final). Ils mesurent uniquement l'écart d'impact d'une caractéristique par rapport à un profil patient moyen de référence. Par exemple, un facteur à -11 % abaisse le risque du patient de 11 points par rapport à la moyenne de la population étudiée.")
+        
         #10 facteurs contributifs principaux
         st.markdown("**Facteurs contributifs principaux**")
         if top_10_contributifs:
