@@ -88,11 +88,15 @@ st.title("AI4FA")
 st.markdown("Renseignez les informations du patient pour générer le rapport d'analyse.")
 
 #Identité
-c_prenom, c_nom, c_vide = st.columns([1, 1, 2])
+c_prenom, c_nom, c_motif, c_rdv = st.columns(4)
 with c_prenom:
     prenom = st.text_input("Prénom", value="Callie")
 with c_nom:
     nom = st.text_input("Nom", value="Moreau")
+with c_motif:
+    motif_input = st.text_input("Motif", value="Palpitations")
+with c_rdv:
+    rdv_input = st.text_input("Rendez-vous", value="12/12/2025 – 14h00")
 
 st.divider()
 
@@ -238,7 +242,7 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
     X = pd.DataFrame([valeurs_dict], columns=FEATURE_NAMES).astype(float)
     probas = model.predict_proba(X)[0]
     label  = 1 if probas[1] >= seuil else 0
-    score_malade_pct = int(probas[1] * 100)
+    score_malade_pct = probas[1] * 100
     
     #LIME
     with st.spinner("Génération du rapport et calcul de l'explicabilité en cours..."):
@@ -270,9 +274,8 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
             
         with col_header2:
             st.write("") 
-            motif_txt = "Palpitations" if palpitations == "Oui" else "Bilan de routine"
-            st.write(f"**Motif :** {motif_txt}")
-            st.write("**Rendez-vous :** 12/12/2025 – 14h00")
+            st.write(f"**Motif :** {motif_input}")
+            st.write(f"**Rendez-vous :** {rdv_input}")
             
         with col_header3:
             st.empty() 
@@ -293,7 +296,7 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
             st.markdown("<h2 style='text-align: center; color: #10b981; margin-bottom: 0px;'>Risque peu élevé de FA</h2>", unsafe_allow_html=True)
             
         #Probabilité estimée
-        st.markdown(f"<h4 style='text-align: center; color: #475569; margin-top: 5px;'>Probabilité estimée : {score_malade_pct} %</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='text-align: center; color: #475569; margin-top: 5px;'>Probabilité estimée : {score_malade_pct:.1f} %</h4>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 14px;'>Calculé en rythme sinusal à partir de données cliniques multimodales.</p>", unsafe_allow_html=True)
         
         st.write("") 
@@ -305,8 +308,12 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
             for f in top_10_contributifs:
                 rule_text = f[0].replace("<=", "≤").replace(">", ">")
                 weight = f[1]
-                pct = int(round(weight * 100))
-                pct_display = f"+{pct} %" if pct > 0 else "<1 %"
+                pct = weight * 100
+                
+                if pct >= 0.1:
+                    pct_display = f"+{pct:.1f} %"
+                else:
+                    pct_display = "<0.1 %"
                 
                 display_text = f"{rule_text} ({pct_display})"
                 pills_html += f"<span style='display: inline-block; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 20px; padding: 6px 14px; margin: 4px; font-size: 14px; color: #334155;'>{display_text}</span>"
@@ -322,13 +329,16 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
             for f in top_10_protecteurs:
                 rule_text = f[0].replace("<=", "≤").replace(">", ">")
                 weight = f[1]
-                pct = int(round(abs(weight) * 100))
+                pct_abs = abs(weight) * 100
                 
-                if weight < 0:
-                    pct_display = f"-{pct} %" if pct > 0 else "<-1 %"
+                if weight <= -0.001:
+                    if pct_abs >= 0.1:
+                        pct_display = f"-{pct_abs:.1f} %"
+                    else:
+                        pct_display = "<-0.1 %"
                     st.markdown(f"- {rule_text} : **{pct_display}**")
                 else:
-                    st.markdown(f"- {rule_text} : **Neutre (0 %)**")
+                    st.markdown(f"- {rule_text} : **Neutre (0.0 %)**")
         else:
             st.write("- Aucun.")
 
@@ -342,8 +352,13 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
             if facteurs_contributifs:
                 for f in facteurs_contributifs:
                     rule_text = f[0].replace("<=", "≤").replace(">", ">")
-                    pct = int(round(f[1] * 100))
-                    pct_display = f"+{pct} %" if pct > 0 else "<1 %"
+                    pct = f[1] * 100
+                    
+                    if pct >= 0.1:
+                        pct_display = f"+{pct:.1f} %"
+                    else:
+                        pct_display = "<0.1 %"
+                        
                     st.write(f"- {rule_text} : **{pct_display}**")
             else:
                 st.write("Aucun")
@@ -353,11 +368,16 @@ if st.button("Lancer l'analyse", type="primary", use_container_width=True, disab
             if facteurs_non_contributifs:
                 for f in facteurs_non_contributifs:
                     rule_text = f[0].replace("<=", "≤").replace(">", ">")
-                    pct = int(round(abs(f[1]) * 100))
-                    if f[1] < 0:
-                        pct_display = f"-{pct} %" if pct > 0 else "<-1 %"
+                    pct_abs = abs(f[1]) * 100
+                    
+                    if f[1] <= -0.001:
+                        if pct_abs >= 0.1:
+                            pct_display = f"-{pct_abs:.1f} %"
+                        else:
+                            pct_display = "<-0.1 %"
                     else:
-                        pct_display = "Neutre (0 %)"
+                        pct_display = "Neutre (0.0 %)"
+                        
                     st.write(f"- {rule_text} : **{pct_display}**")
             else:
                 st.write("Aucun")
